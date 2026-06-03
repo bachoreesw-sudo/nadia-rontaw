@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SMART THERAPY SHOE - ระบบรองเท้าบำบัด</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        /* ================= CSS VARIABLES (THEME CONFIG) ================= */
+        /* Light Theme (สว่าง น่ารัก คลีนๆ) */
+        :root {
+            --bg-color: #f0f8ff; 
+            --container-bg: #ffffff;
+            --card-bg: #ffffff;
+            --text-color: #334155;
+            --text-muted: #94a3b8;
+            --accent-color: #38bdf8; 
+            --accent-glow: 0 0 15px rgba(56, 189, 248, 0.6);
+            --danger-color: #ff6b6b; 
+            --danger-glow: 0 0 15px rgba(255, 107, 107, 0.6);
+            --success-color: #4ade80;
+            --success-glow: 0 0 15px rgba(74, 222, 128, 0.6);
+            --border-color: #e2e8f0;
+            --shadow: 0 10px 25px rgba(149, 157, 165, 0.15);
+            
+            --font-family: 'Quicksand', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --timer-font: 'Nunito', 'Courier New', monospace;
+            --border-radius-lg: 30px;
+            --border-radius-md: 20px;
+            --transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        /* Dark Theme (มืด เท่) */
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --container-bg: #1e293b;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --text-muted: #cbd5e1;
+            --accent-color: #38bdf8;
+            --border-color: #334155;
+            --shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        /* ================= CORE STYLES ================= */
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+        
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: var(--font-family); 
+            display: flex; flex-direction: column; 
+            min-height: 100vh; overflow-x: hidden;
+            transition: background-color 0.5s, color 0.5s;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+
+        /* ================= HEADER ================= */
+        header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 15px 25px; background: var(--container-bg); 
+            border-bottom: 2px solid var(--border-color);
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            transition: 0.5s;
+        }
+        
+        .app-title { font-size: 1.2rem; font-weight: 900; color: var(--accent-color); text-shadow: var(--accent-glow); }
+        .header-controls { display: flex; align-items: center; gap: 15px; }
+        
+        .board-status { 
+            display: flex; align-items: center; gap: 8px; 
+            padding: 8px 16px; background: var(--bg-color); 
+            border-radius: 30px; font-size: 0.85rem; font-weight: 800;
+            border: 2px solid var(--border-color);
+        }
+        
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; background-color: var(--success-color); box-shadow: var(--success-glow); }
+        .status-dot.offline { background-color: var(--danger-color); box-shadow: var(--danger-glow); }
+        
+        .theme-toggle-btn {
+            background: var(--bg-color); border: 2px solid var(--border-color);
+            color: var(--text-color); font-size: 1.2rem; cursor: pointer;
+            width: 45px; height: 45px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: var(--transition);
+        }
+        .theme-toggle-btn:hover { border-color: var(--accent-color); transform: scale(1.1) rotate(15deg); }
+
+        /* ================= MAIN DASHBOARD ================= */
+        .main-container {
+            flex: 1; display: flex; flex-direction: column; gap: 20px;
+            padding: 20px; padding-bottom: 50px; max-width: 1000px; margin: 0 auto; width: 100%;
+        }
+
+        /* 3D Simulation */
+        .simulation-card {
+            width: 100%; height: 40vh; min-height: 300px;
+            background: var(--container-bg); border-radius: var(--border-radius-lg);
+            border: 2px solid var(--border-color); overflow: hidden; position: relative;
+            box-shadow: var(--shadow); transition: 0.5s;
+        }
+        #threejs-canvas-container { width: 100%; height: 100%; }
+        
+        /* Grid สำหรับแผงควบคุมหลัก (Manual + Timer) */
+        .control-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%;
+        }
+
+        /* แผง Timer ขณะกำลังนับถอยหลัง (ใต้ 3D) */
+        #activeTimerDashboard {
+            display: none; background: var(--card-bg); border-radius: var(--border-radius-lg);
+            padding: 25px; border: 2px solid var(--accent-color); box-shadow: var(--accent-glow);
+            text-align: center; animation: slideDown 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .progress-bar-bg {
+            background: var(--border-color); border-radius: 20px; height: 18px; width: 100%; 
+            margin: 15px 0; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .progress-bar-fill {
+            background: var(--accent-color); height: 100%; width: 100%;
+            border-radius: 20px; box-shadow: var(--accent-glow); transition: width 1s linear;
+        }
+        .dash-cd-display {
+            font-family: var(--timer-font); font-size: 3rem; font-weight: 900; 
+            color: var(--accent-color); text-shadow: var(--accent-glow);
+        }
+
+        /* Time Inputs (หน้าตั้งเวลา) */
+        .time-inputs { display: flex; gap: 10px; justify-content: center; margin: 15px 0; }
+        .time-box { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .time-box input { 
+            width: 100%; height: 70px; text-align: center; font-family: var(--timer-font); 
+            font-size: 2.5rem; font-weight: 900; color: var(--accent-color); 
+            background: var(--bg-color); border: 2px solid var(--border-color); border-radius: var(--border-radius-md); 
+            transition: var(--transition);
+        }
+        .time-box input:focus { border-color: var(--accent-color); box-shadow: var(--accent-glow); transform: scale(1.05); }
+        .time-box label { font-size: 0.9rem; margin-top: 5px; color: var(--text-muted); font-weight: 800; }
+
+        /* Menu Grid (ส่วนเมนูที่เหลือ) */
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; width: 100%; margin-top: 10px; }
+        
+        .menu-btn { 
+            background: var(--card-bg); border: 2px solid var(--border-color); padding: 20px; 
+            border-radius: var(--border-radius-lg); color: var(--text-color); 
+            font-size: 1.1rem; font-weight: 800; cursor: pointer; 
+            display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 15px; 
+            transition: var(--transition); box-shadow: var(--shadow);
+        }
+        .menu-btn:hover { border-color: var(--accent-color); transform: translateY(-5px); color: var(--accent-color); }
+        .menu-icon { font-size: 2rem; transition: var(--transition); }
+        .menu-btn:hover .menu-icon { transform: scale(1.15) rotate(-5deg); }
+
+        /* ================= REUSABLE BUTTONS & CARDS ================= */
+        .btn-cute { 
+            width: 100%; padding: 18px; border: none; border-radius: 50px;
+            font-size: 1.2rem; font-weight: 800; cursor: pointer; transition: var(--transition); 
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+        }
+        .btn-start { background: var(--accent-color); color: #fff; box-shadow: var(--accent-glow); }
+        .btn-start:hover { transform: translateY(-4px) scale(1.02); }
+        .btn-start:active { transform: translateY(2px) scale(0.95); }
+        
+        .btn-stop { background: var(--danger-color); color: #fff; box-shadow: var(--danger-glow); }
+        .btn-stop:hover { transform: translateY(-4px) scale(1.02); }
+        .btn-stop:active { transform: translateY(2px) scale(0.95); }
+
+        .dashboard-card { 
+            background: var(--card-bg); border-radius: var(--border-radius-lg); 
+            padding: 25px; border: 2px solid var(--border-color); box-shadow: var(--shadow);
+            display: flex; flex-direction: column; justify-content: center;
+        }
+
+        .form-control { 
+            width: 100%; padding: 15px; border-radius: var(--border-radius-md); 
+            border: 2px solid var(--border-color); background: var(--bg-color); color: var(--text-color); 
+            font-size: 1.1rem; font-weight: bold; transition: var(--transition); text-align: center;
+        }
+        .form-control:focus { border-color: var(--accent-color); box-shadow: var(--accent-glow); transform: scale(1.02); }
+
+        /* ================= PAGES OVERLAYS (สำหรับปฏิทินและตั้งค่า) ================= */
+        .page-view { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: var(--bg-color); z-index: 200; display: flex; 
+            flex-direction: column; transform: translateX(100%); visibility: hidden; 
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .page-view.active { transform: translateX(0); visibility: visible; }
+        
+        .page-header { 
+            padding: 20px 25px; display: flex; align-items: center; justify-content: center;
+            background: var(--container-bg); border-bottom: 2px solid var(--border-color); position: relative;
+        }
+        .back-btn { 
+            background: var(--bg-color); border: 2px solid var(--border-color); color: var(--text-color); 
+            width: 45px; height: 45px; border-radius: 50%; font-size: 1.2rem; font-weight: 900; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; 
+            position: absolute; left: 20px; transition: var(--transition);
+        }
+        .back-btn:hover { border-color: var(--accent-color); color: var(--accent-color); transform: scale(1.1) translateX(-3px); }
+        .page-title { font-size: 1.3rem; font-weight: 900; color: var(--text-color); }
+
+        .page-content { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; max-width: 600px; margin: 0 auto; width: 100%; }
+
+        /* Calendar */
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-weight: 900; font-size: 1.3rem; }
+        .month-nav-btn { background: var(--bg-color); border: 2px solid var(--border-color); color: var(--text-color); width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-weight: bold; transition: var(--transition);}
+        .month-nav-btn:hover { border-color: var(--accent-color); color: var(--accent-color); transform: scale(1.1); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; }
+        .weekday { font-size: 0.9rem; font-weight: 900; color: var(--text-muted); padding-bottom: 10px; }
+        .day-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; font-weight: 800; font-size:1.1rem; transition: var(--transition); border: 2px solid transparent; }
+        .day-cell:hover:not(.empty) { border-color: var(--accent-color); transform: scale(1.1); }
+        .day-cell.has-plan { background-color: rgba(56, 189, 248, 0.15); color: var(--accent-color); }
+        .day-cell.selected { background-color: var(--accent-color) !important; color: #fff !important; box-shadow: var(--accent-glow); transform: scale(1.1); }
+
+        .schedule-item { background: var(--bg-color); border-radius: var(--border-radius-md); padding: 15px 20px; border: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-bottom:10px; }
+        .schedule-time { font-family: var(--timer-font); font-size: 1.8rem; font-weight: 900; color: var(--accent-color); }
+        .btn-del { background: var(--danger-color); color: #fff; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; box-shadow: var(--danger-glow); transition: var(--transition); }
+        .btn-del:hover { transform: scale(1.1); }
+
+        /* Banners */
+        #installBanner { display: none; background: var(--accent-color); color: white; text-align: center; font-weight: 900; padding: 15px; border-radius: var(--border-radius-lg); cursor: pointer; box-shadow: var(--accent-glow); }
+        #iosInstallHint { display: none; background: var(--card-bg); color: var(--text-muted); text-align: center; padding: 15px; border-radius: var(--border-radius-lg); font-size: 0.9rem; border: 2px solid var(--border-color); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="app-title">✨ THERAPY SHOE</div>
+        <div class="header-controls">
+            <div class="board-status">
+                <span class="status-dot offline" id="boardDot"></span>
+                <span id="boardStatusTxt" style="color: var(--text-muted);">ออฟไลน์</span>
+            </div>
+            <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()">☀️</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        
+        <div class="simulation-card">
+            <div id="threejs-canvas-container"></div>
+            <div style="position: absolute; top: 15px; left: 15px; background: var(--bg-color); border: 2px solid var(--border-color); padding: 8px 15px; border-radius: 20px; font-weight: 900; font-size: 0.85rem; color: var(--accent-color); box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                🎮 3D Live View
+            </div>
+        </div>
+
+        <div id="activeTimerDashboard">
+            <h3 style="color: var(--accent-color); font-weight: 900; font-size: 1.5rem; margin-bottom: 5px;">⏳ กำลังทำกายภาพ</h3>
+            <p style="color: var(--text-muted); font-weight: 800; margin-bottom: 15px;">กรุณาสวมรองเท้าและอยู่นิ่งๆ</p>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="dashboardProgressFill" style="width: 100%;"></div>
+            </div>
+            <div class="dash-cd-display" id="dashboardCountdownText">00:00:00</div>
+            <button class="btn-cute btn-stop" style="margin-top: 20px;" onclick="stopCountdown(false)">⏹ ยกเลิกเวลา</button>
+        </div>
+
+        <div class="control-grid" id="mainControlGrid">
+            
+            <div class="dashboard-card" style="text-align: center;">
+                <h3 style="color: var(--text-color); font-weight: 900; margin-bottom: 5px;">🎛️ โหมดแมนนวล</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; font-weight: 700; margin-bottom: 20px;">เปิดใช้งานทันทีไม่จำกัดเวลา</p>
+                <button id="manualActionBtn" class="btn-cute btn-start" onclick="toggleManualRelay()">
+                    ▶ เปิดการทำงาน
+                </button>
+            </div>
+
+            <div class="dashboard-card" id="timerSetupCard" style="text-align: center;">
+                <h3 style="color: var(--accent-color); font-weight: 900; margin-bottom: 5px;">⏳ ตั้งเวลานับถอยหลัง</h3>
+                <div class="time-inputs">
+                    <div class="time-box">
+                        <input type="number" id="cd-h" min="0" max="23" value="0" placeholder="00">
+                        <label>ชั่วโมง</label>
+                    </div>
+                    <div style="font-size: 2rem; font-weight:900; color:var(--text-muted); align-self:center; margin-bottom:25px;">:</div>
+                    <div class="time-box">
+                        <input type="number" id="cd-m" min="0" max="59" value="15" placeholder="00">
+                        <label>นาที</label>
+                    </div>
+                    <div style="font-size: 2rem; font-weight:900; color:var(--text-muted); align-self:center; margin-bottom:25px;">:</div>
+                    <div class="time-box">
+                        <input type="number" id="cd-s" min="0" max="59" value="0" placeholder="00">
+                        <label>วินาที</label>
+                    </div>
+                </div>
+                <button id="timerActionBtn" class="btn-cute btn-start" onclick="startCountdown()">
+                    ▶ เริ่มจับเวลา
+                </button>
+            </div>
+
+        </div>
+
+        <div id="installBanner" onclick="installApp()">📥 ติดตั้งแอปลงเครื่อง กดที่นี่เลย!</div>
+        <div id="iosInstallHint">💡 <b>สำหรับ iPhone/iPad:</b> กดปุ่มแชร์ด้านล่าง แล้วเลือก "เพิ่มไปยังหน้าจอโฮม"</div>
+
+        <div class="menu-grid">
+            <button class="menu-btn" onclick="openPage('calendarPage')">
+                <span class="menu-icon">📅</span> 
+                <span>ปฏิทินตั้งเวลาล่วงหน้า</span>
+            </button>
+            <button class="menu-btn" onclick="openPage('settingsPage')">
+                <span class="menu-icon">⚙️</span> 
+                <span>ตั้งค่าและแจ้งเตือน</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="calendarPage" class="page-view">
+        <div class="page-header">
+            <button class="back-btn" onclick="closePage('calendarPage')">❮</button>
+            <div class="page-title">ตารางปฏิทิน</div>
+        </div>
+        <div class="page-content">
+            <div class="dashboard-card">
+                <div class="calendar-header">
+                    <button class="month-nav-btn" onclick="changeMonth(-1)">◀</button>
+                    <span id="calendarMonthYear" style="color: var(--accent-color);"></span>
+                    <button class="month-nav-btn" onclick="changeMonth(1)">▶</button>
+                </div>
+                <div class="calendar-grid" id="calendarDaysGrid"></div>
+            </div>
+
+            <div class="dashboard-card">
+                <h3 id="selectedDateLabel" style="color: var(--text-color); margin-bottom: 20px; font-weight: 900;">วันที่เลือก: -</h3>
+                <div id="activeTimesList"></div>
+                
+                <hr style="border: 0; border-top: 2px dashed var(--border-color); margin: 20px 0;">
+                <label style="display:block; margin-bottom:15px; color:var(--text-color); font-weight: 800;">เพิ่มเวลาแจ้งเตือนใหม่:</label>
+                <div style="display: flex; gap: 15px;">
+                    <input type="time" id="inputScheduleTime" class="form-control" value="08:00">
+                    <button class="btn-cute btn-start" style="width: auto; padding: 0 30px;" onclick="addSchedule()">เพิ่ม</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsPage" class="page-view">
+        <div class="page-header">
+            <button class="back-btn" onclick="closePage('settingsPage')">❮</button>
+            <div class="page-title">ตั้งค่าระบบ</div>
+        </div>
+        <div class="page-content">
+            <div class="dashboard-card">
+                <div style="margin-bottom:30px;">
+                    <label style="font-weight:900; display:block; margin-bottom:15px; color: var(--text-color);">Discord Webhook URL</label>
+                    <input type="text" id="discordWebhookInput" class="form-control" placeholder="https://discord.com/api/webhooks/...">
+                    <p style="font-size:0.9rem; color:var(--text-muted); font-weight: 800; margin-top:10px;">เชื่อมต่อเพื่อรับการแจ้งเตือนผ่าน Discord</p>
+                </div>
+                
+                <div style="margin-bottom:35px;">
+                    <label style="font-weight:900; display:block; margin-bottom:15px; color: var(--text-color);">การแจ้งเตือนบนอุปกรณ์</label>
+                    <button class="btn-cute" style="background:var(--bg-color); color:var(--text-color); border:2px solid var(--border-color);" onclick="requestNotificationPermission()">
+                        🔔 เปิดอนุญาตแจ้งเตือนบนจอมือถือ/คอม
+                    </button>
+                </div>
+                
+                <button class="btn-cute btn-start" onclick="saveSettings()">💾 บันทึกการตั้งค่า</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 1. THEME SWITCHER LOGIC
+        // ============================================================
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            body.setAttribute('data-theme', newTheme);
+            document.getElementById('themeToggleBtn').innerText = newTheme === 'dark' ? '☀️' : '🌙';
+            
+            if (scene) {
+                scene.background = new THREE.Color(newTheme === 'dark' ? 0x0f172a : 0xf0f8ff);
+            }
+        }
+
+        // ============================================================
+        // 2. THREE.JS 3D SHOE SIMULATION (Sandal - Pivot at Toe)
+        // ============================================================
+        let scene, camera, renderer, boxContainer;
+        let leftShoePivot, rightShoePivot;
+        let animationId;
+        let isSimulating = false;
+        let simClock = new THREE.Clock();
+
+        function init3D() {
+            const container = document.getElementById('threejs-canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene = new THREE.Scene();
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            scene.background = new THREE.Color(isDark ? 0x0f172a : 0xf0f8ff);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(0, 4.5, 7.5);
+            camera.lookAt(0, 1, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(2, 5, 2);
+            scene.add(directionalLight);
+
+            const shoeMat = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x38bdf8, shininess: 30 });
+            const boxMat = new THREE.MeshPhongMaterial({ color: 0xe2e8f0, flatShining: true });
+            const motorMat = new THREE.MeshPhongMaterial({ color: 0xff6b6b, emissive: 0x400000 });
+            const strapMat = new THREE.MeshPhongMaterial({ color: 0x38bdf8 });
+
+            const boxGeom = new THREE.BoxGeometry(4.5, 1, 3);
+            boxContainer = new THREE.Mesh(boxGeom, boxMat);
+            boxContainer.position.y = 0.5;
+            scene.add(boxContainer);
+
+            function createSandal() {
+                const group = new THREE.Group();
+                const soleGeom = new THREE.BoxGeometry(1.2, 0.15, 2.8);
+                const sole = new THREE.Mesh(soleGeom, shoeMat);
+                sole.position.set(0, 0, 0); 
+                group.add(sole);
+                
+                const strap1Geom = new THREE.BoxGeometry(1.25, 0.3, 0.6);
+                const strap1 = new THREE.Mesh(strap1Geom, strapMat);
+                strap1.position.set(0, 0.2, -0.7); 
+                group.add(strap1);
+
+                const strap2Geom = new THREE.BoxGeometry(1.25, 0.3, 0.4);
+                const strap2 = new THREE.Mesh(strap2Geom, strapMat);
+                strap2.position.set(0, 0.2, 0.1); 
+                group.add(strap2);
+                
+                const motorGeom = new THREE.CylinderGeometry(0.25, 0.25, 0.5, 16);
+                const motor = new THREE.Mesh(motorGeom, motorMat);
+                motor.rotation.z = Math.PI / 2;
+                motor.position.set(0, 0.2, 1.2); 
+                group.add(motor);
+                return group;
+            }
+
+            leftShoePivot = new THREE.Group();
+            leftShoePivot.position.set(-1.2, 1.075, -1.2); 
+            scene.add(leftShoePivot);
+            const leftSandal = createSandal();
+            leftSandal.position.set(0, 0, 1.2); 
+            leftShoePivot.add(leftSandal);
+
+            rightShoePivot = new THREE.Group();
+            rightShoePivot.position.set(1.2, 1.075, -1.2);
+            scene.add(rightShoePivot);
+            const rightSandal = createSandal();
+            rightSandal.position.set(0, 0, 1.2);
+            rightShoePivot.add(rightSandal);
+
+            window.addEventListener('resize', onWindowResize, false);
+            animate3D();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('threejs-canvas-container');
+            if (!container) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate3D() {
+            animationId = requestAnimationFrame(animate3D);
+            if (isSimulating) {
+                const elapsed = simClock.getElapsedTime();
+                const speed = 5; 
+                const maxAngle = 0.35; 
+                
+                const leftPhase = (Math.sin(elapsed * speed) + 1) / 2;
+                leftShoePivot.rotation.x = -(leftPhase * maxAngle);
+                const rightPhase = (Math.sin(elapsed * speed + Math.PI) + 1) / 2;
+                rightShoePivot.rotation.x = -(rightPhase * maxAngle);
+            } else {
+                leftShoePivot.rotation.x = THREE.MathUtils.lerp(leftShoePivot.rotation.x, 0, 0.1);
+                rightShoePivot.rotation.x = THREE.MathUtils.lerp(rightShoePivot.rotation.x, 0, 0.1);
+            }
+            renderer.render(scene, camera);
+        }
+        function setSimulationState(active) { isSimulating = active; if (active) simClock.start(); }
+
+        // ============================================================
+        // 3. MAIN LOGIC (Firebase, Unified Dashboard Controls)
+        // ============================================================
+        let appState = { schedules: {}, selectedDate: '', relayActive: false, discordWebhook: localStorage.getItem('discordWebhook') || '' };
+
+        // ============================================================
+        // ⚠️ นำ FIREBASE API KEY มาใส่ที่นี่
+        // ============================================================
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBLJ0R_fi9xE9FHrg8L8F3_zEI8_Er8aPE", 
+            databaseURL: "https://nadia-rontaw-default-rtdb.firebaseio.com/" 
+        };
+
+        let db = null;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            db.ref(".info/connected").on("value", snap => {
+                const dot = document.getElementById('boardDot');
+                const txt = document.getElementById('boardStatusTxt');
+                if (snap.val() === true) {
+                    dot.classList.remove('offline'); txt.innerText = 'ออนไลน์'; txt.style.color = 'var(--success-color)';
+                } else {
+                    dot.classList.add('offline'); txt.innerText = 'ออฟไลน์'; txt.style.color = 'var(--danger-color)';
+                }
+            });
+            db.ref("TherapyShoe/Schedules").on("value", snap => {
+                appState.schedules = snap.exists() ? snap.val() : {};
+                renderCalendar(); if(appState.selectedDate) updateSelectedDateUI();
+            });
+            db.ref("TherapyShoe/Control/Relay").on("value", snap => {
+                appState.relayActive = snap.val() || false;
+                updateButtonStatesUI(); 
+            });
+        } catch (e) { console.error("Firebase is running in offline mode."); }
+
+        document.getElementById('discordWebhookInput').value = appState.discordWebhook;
+
+        // --- Notifications ---
+        function sendDiscordWebhook(message) {
+            if (!appState.discordWebhook || !appState.discordWebhook.startsWith("http")) return;
+            fetch(appState.discordWebhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: message }) });
+        }
+        function requestNotificationPermission() {
+            if ("Notification" in window) Notification.requestPermission().then(p => alert(p === "granted" ? "อนุญาตสำเร็จ" : "ปฏิเสธ"));
+        }
+        function sendLocalNotification(title, bodyText) {
+            if ("Notification" in window && Notification.permission === "granted") new Notification(title, { body: bodyText });
+        }
+
+        // --- RELAY & DASHBOARD BUTTON STATES ---
+        function setFirebaseRelay(state) {
+            if(db) db.ref("TherapyShoe/Control/Relay").set(state);
+            else { appState.relayActive = state; updateButtonStatesUI(); } 
+        }
+
+        let cdInterval;
+        let currentSeconds = 0;
+        let initialSeconds = 0;
+
+        // จัดการสถานะ UI บน Dashboard 
+        function updateButtonStatesUI() {
+            const manualBtn = document.getElementById('manualActionBtn');
+            const timerSetupCard = document.getElementById('timerSetupCard');
+            const activeTimerDash = document.getElementById('activeTimerDashboard');
+
+            if(appState.relayActive) {
+                // เปลี่ยนปุ่ม Manual เป็นโหมด "ปิด"
+                manualBtn.innerHTML = "⏹ ปิดการทำงาน";
+                manualBtn.classList.replace('btn-start', 'btn-stop');
+                
+                setSimulationState(true);
+            } else {
+                // กลับสู่สภาพเริ่มต้น
+                manualBtn.innerHTML = "▶ เปิดการทำงาน";
+                manualBtn.classList.replace('btn-stop', 'btn-start');
+                
+                timerSetupCard.style.display = 'block';
+                activeTimerDash.style.display = 'none';
+                
+                setSimulationState(false);
+            }
+        }
+
+        // กดปุ่ม แมนนวล
+        function toggleManualRelay() {
+            if (cdInterval) stopCountdown(false); // ถ้านับถอยหลังอยู่ ให้ยกเลิกก่อน
+            else {
+                const newState = !appState.relayActive;
+                setFirebaseRelay(newState);
+                sendDiscordWebhook(newState ? "🟢 อุปกรณ์เปิดแบบแมนนวล" : "🔴 อุปกรณ์ปิดแบบแมนนวล");
+            }
+        }
+
+        // กดปุ่ม เริ่ม Timer
+        function startCountdown() {
+            if (appState.relayActive) return alert("อุปกรณ์ทำงานอยู่ กรุณากดปิดที่โหมดแมนนวลก่อนครับ");
+            
+            let h = parseInt(document.getElementById('cd-h').value) || 0;
+            let m = parseInt(document.getElementById('cd-m').value) || 0;
+            let s = parseInt(document.getElementById('cd-s').value) || 0;
+            
+            initialSeconds = (h * 3600) + (m * 60) + s;
+            currentSeconds = initialSeconds;
+            
+            if(initialSeconds <= 0) return alert("กรุณาระบุเวลาให้ถูกต้อง");
+
+            setFirebaseRelay(true);
+            sendDiscordWebhook(`⏱️ เริ่มตั้งเวลากายภาพ ${h} ชม. ${m} นาที ${s} วินาที`);
+
+            // สลับ UI: ซ่อนกล่องตั้งเวลา, โชว์หลอดเรืองแสง
+            document.getElementById('timerSetupCard').style.display = 'none';
+            document.getElementById('activeTimerDashboard').style.display = 'block';
+
+            clearInterval(cdInterval);
+            cdInterval = setInterval(() => {
+                currentSeconds--;
+                updateCountdownDisplay();
+                if(currentSeconds <= 0) stopCountdown(true);
+            }, 1000);
+            updateCountdownDisplay();
+        }
+
+        function updateCountdownDisplay() {
+            let dispH = String(Math.floor(currentSeconds / 3600)).padStart(2, '0');
+            let dispM = String(Math.floor((currentSeconds % 3600) / 60)).padStart(2, '0');
+            let dispS = String(currentSeconds % 60).padStart(2, '0');
+            document.getElementById('dashboardCountdownText').innerText = `${dispH}:${dispM}:${dispS}`;
+            
+            // อัปเดตความกว้างหลอดพลังงาน
+            const percent = (currentSeconds / initialSeconds) * 100;
+            document.getElementById('dashboardProgressFill').style.width = percent + '%';
+        }
+
+        function stopCountdown(isFinished = false) {
+            clearInterval(cdInterval);
+            cdInterval = null;
+            setFirebaseRelay(false);
+
+            if(isFinished) {
+                sendLocalNotification("หมดเวลากายภาพ", "รองเท้าหยุดทำงานแล้ว");
+                sendDiscordWebhook("✅ ครบกำหนดเวลา เครื่องหยุดทำงาน");
+            } else if(currentSeconds > 0) {
+                sendDiscordWebhook("🛑 ยกเลิกเวลา ผู้ใช้กดหยุดการทำงาน");
+            }
+            currentSeconds = 0;
+        }
+
+        // --- CALENDAR LOGIC ---
+        const mNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+        let calDate = new Date(); let currMonth = calDate.getMonth(); let currYear = calDate.getFullYear();
+        appState.selectedDate = `${currYear}-${String(currMonth+1).padStart(2,'0')}-${String(calDate.getDate()).padStart(2,'0')}`;
+
+        function changeMonth(offset) { currMonth += offset; if(currMonth>11){currMonth=0;currYear++;}else if(currMonth<0){currMonth=11;currYear--;} renderCalendar(); }
+        function renderCalendar() {
+            const grid = document.getElementById('calendarDaysGrid');
+            if(!grid) return; grid.innerHTML = '';
+            document.getElementById('calendarMonthYear').innerText = `${mNames[currMonth]} ${currYear}`;
+            ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].forEach(day => { grid.innerHTML += `<div class="weekday">${day}</div>`; });
+            const firstDay = new Date(currYear, currMonth, 1).getDay();
+            const daysInMonth = new Date(currYear, currMonth + 1, 0).getDate();
+            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="day-cell empty"></div>`;
+            for(let day=1; day<=daysInMonth; day++) {
+                const dateStr = `${currYear}-${String(currMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                let classes = 'day-cell';
+                if(appState.schedules[dateStr] && Object.keys(appState.schedules[dateStr]).length > 0) classes += ' has-plan';
+                if(appState.selectedDate === dateStr) classes += ' selected';
+                grid.innerHTML += `<div class="${classes}" onclick="selectDate('${dateStr}')">${day}</div>`;
+            }
+        }
+        function selectDate(dateStr) { appState.selectedDate = dateStr; renderCalendar(); updateSelectedDateUI(); }
+        function updateSelectedDateUI() {
+            const p = appState.selectedDate.split('-');
+            document.getElementById('selectedDateLabel').innerText = `วันที่: ${p[2]} ${mNames[parseInt(p[1])-1]} ${p[0]}`;
+            const times = appState.schedules[appState.selectedDate] ? Object.values(appState.schedules[appState.selectedDate]) : [];
+            times.sort((a,b) => a.time.localeCompare(b.time));
+            const listDiv = document.getElementById('activeTimesList');
+            if(times.length === 0) listDiv.innerHTML = '<p style="color:var(--text-muted); font-weight:800;">ไม่มีการตั้งเวลาในวันนี้</p>';
+            else {
+                listDiv.innerHTML = times.map(t => `
+                    <div class="schedule-item">
+                        <span class="schedule-time">${t.time}</span>
+                        <button class="btn-del" onclick="deleteSchedule(${t.id})">ลบ ✖</button>
+                    </div>
+                `).join('');
+            }
+        }
+        function addSchedule() {
+            const timeVal = document.getElementById('inputScheduleTime').value;
+            if(!timeVal || !appState.selectedDate) return;
+            const currentTimes = appState.schedules[appState.selectedDate] ? Object.values(appState.schedules[appState.selectedDate]) : [];
+            if(currentTimes.some(t => t.time === timeVal)) return alert("เวลานี้ถูกตั้งไว้แล้ว");
+            if(!appState.schedules[appState.selectedDate]) appState.schedules[appState.selectedDate] = {};
+            const newId = Date.now();
+            appState.schedules[appState.selectedDate][newId] = { id: newId, time: timeVal };
+            if(db) db.ref("TherapyShoe/Schedules").set(appState.schedules);
+            else updateSelectedDateUI();
+        }
+        function deleteSchedule(id) {
+            if(confirm("ลบการตั้งเวลานี้?")) {
+                let targetKey = Object.keys(appState.schedules[appState.selectedDate]).find(k => appState.schedules[appState.selectedDate][k].id === id);
+                if(targetKey) {
+                    delete appState.schedules[appState.selectedDate][targetKey];
+                    if(db) db.ref("TherapyShoe/Schedules").set(appState.schedules);
+                    else updateSelectedDateUI(); 
+                }
+            }
+        }
+
+        // --- BACKGROUND ROUTINE ---
+        let lastTriggeredTime = "";
+        setInterval(() => {
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+            const todayPlans = appState.schedules[dateStr] ? Object.values(appState.schedules[dateStr]) : [];
+            todayPlans.forEach(plan => {
+                if(plan.time === timeStr && lastTriggeredTime !== timeStr && !appState.relayActive) {
+                    sendLocalNotification("ถึงเวลากายภาพ!", `เวลา ${timeStr} น. กรุณาสวมรองเท้า`);
+                    // บอร์ด ESP32 เป็นคนส่ง Webhook เพื่อป้องกันข้อความซ้ำซ้อน
+                    lastTriggeredTime = timeStr;
+                }
+            });
+            if(lastTriggeredTime !== "" && lastTriggeredTime !== timeStr) lastTriggeredTime = "";
+        }, 1000);
+
+        // --- NAVIGATION & INIT ---
+        function openPage(pageId) { document.getElementById(pageId).classList.add('active'); }
+        function closePage(pageId) { document.getElementById(pageId).classList.remove('active'); }
+        
+        // --- ฟังก์ชันบันทึกลิงก์ Discord ลงบน Firebase ด้วย ---
+        function saveSettings() {
+            appState.discordWebhook = document.getElementById('discordWebhookInput').value;
+            localStorage.setItem('discordWebhook', appState.discordWebhook);
+            
+            // อัปเดตลิงก์ลง Firebase ให้บอร์ด ESP32 อ่านไปใช้
+            if(db) {
+                db.ref("TherapyShoe/Settings/discordWebhook").set(appState.discordWebhook);
+            }
+            
+            alert("บันทึกข้อมูลและเชื่อมต่อ Webhook กับบอร์ดเรียบร้อยครับ"); 
+            closePage('settingsPage');
+        }
+
+        // PWA
+        const isIos = () => /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); deferredPrompt = e;
+            if(!isIos() && !isInStandaloneMode()) document.getElementById('installBanner').style.display = 'block'; 
+        });
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => { document.getElementById('installBanner').style.display = 'none'; deferredPrompt = null; });
+            }
+        }
+        if (isIos() && !isInStandaloneMode()) document.getElementById('iosInstallHint').style.display = 'block';
+
+        window.onload = () => {
+            init3D(); renderCalendar();
+            if(!db) { updateSelectedDateUI(); updateButtonStatesUI(); }
+        };
+    </script>
+</body>
+</html>
