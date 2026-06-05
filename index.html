@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SMART THERAPY SHOE - ระบบรองเท้าบำบัด</title>
     
+    <title>G-REHAB</title>
+    
+    <link rel="icon" href="https://scontent.fhdy4-1.fna.fbcdn.net/v/t39.30808-6/718776675_122106754755312449_7479519247770313106_n.jpg?stp=dst-jpg_p526x296_tt6&_nc_cat=109&ccb=1-7&_nc_sid=833d8c&_nc_ohc=MqBHJf1WQLgQ7kNvwHGrYmq&_nc_oc=AdoUc9-tTmeVLLDtDdvA_nEUtYamkKa2cOLkhI0mSHXk_LoKImXldC5k16hFxQVLaNc&_nc_zt=23&_nc_ht=scontent.fhdy4-1.fna&_nc_gid=KYNXL1wg8wpIAIZeKI4G7g&_nc_ss=7b2a8&oh=00_Af9sFEvaT21wt6fui77Uox-d6LL2ayl_chvRNC5OMiu1Zg&oe=6A28839E" type="image/png">
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
         /* ================= CSS VARIABLES (THEME CONFIG) ================= */
-        /* Light Theme (สว่าง น่ารัก คลีนๆ) */
         :root {
             --bg-color: #f0f8ff; 
             --container-bg: #ffffff;
@@ -35,7 +36,6 @@
             --transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
 
-        /* Dark Theme (มืด เท่) */
         [data-theme="dark"] {
             --bg-color: #0f172a;
             --container-bg: #1e293b;
@@ -74,7 +74,8 @@
             transition: 0.5s;
         }
         
-        .app-title { font-size: 1.2rem; font-weight: 900; color: var(--accent-color); text-shadow: var(--accent-glow); }
+        .app-title { font-size: 1.2rem; font-weight: 900; color: var(--accent-color); text-shadow: var(--accent-glow); display: flex; align-items: center; gap: 8px;}
+        .app-logo-img { width: 30px; height: 30px; object-fit: contain; } /* คลาสสำหรับรูปโลโก้ */
         .header-controls { display: flex; align-items: center; gap: 15px; }
         
         .board-status { 
@@ -111,12 +112,10 @@
         }
         #threejs-canvas-container { width: 100%; height: 100%; }
         
-        /* Grid สำหรับแผงควบคุมหลัก (Manual + Timer) */
         .control-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%;
         }
 
-        /* แผง Timer ขณะกำลังนับถอยหลัง (ใต้ 3D) */
         #activeTimerDashboard {
             display: none; background: var(--card-bg); border-radius: var(--border-radius-lg);
             padding: 25px; border: 2px solid var(--accent-color); box-shadow: var(--accent-glow);
@@ -137,7 +136,6 @@
             color: var(--accent-color); text-shadow: var(--accent-glow);
         }
 
-        /* Time Inputs (หน้าตั้งเวลา) */
         .time-inputs { display: flex; gap: 10px; justify-content: center; margin: 15px 0; }
         .time-box { display: flex; flex-direction: column; align-items: center; flex: 1; }
         .time-box input { 
@@ -149,7 +147,6 @@
         .time-box input:focus { border-color: var(--accent-color); box-shadow: var(--accent-glow); transform: scale(1.05); }
         .time-box label { font-size: 0.9rem; margin-top: 5px; color: var(--text-muted); font-weight: 800; }
 
-        /* Menu Grid (ส่วนเมนูที่เหลือ) */
         .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; width: 100%; margin-top: 10px; }
         
         .menu-btn { 
@@ -163,7 +160,6 @@
         .menu-icon { font-size: 2rem; transition: var(--transition); }
         .menu-btn:hover .menu-icon { transform: scale(1.15) rotate(-5deg); }
 
-        /* ================= REUSABLE BUTTONS & CARDS ================= */
         .btn-cute { 
             width: 100%; padding: 18px; border: none; border-radius: 50px;
             font-size: 1.2rem; font-weight: 800; cursor: pointer; transition: var(--transition); 
@@ -191,7 +187,6 @@
         }
         .form-control:focus { border-color: var(--accent-color); box-shadow: var(--accent-glow); transform: scale(1.02); }
 
-        /* ================= PAGES OVERLAYS (สำหรับปฏิทินและตั้งค่า) ================= */
         .page-view { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: var(--bg-color); z-index: 200; display: flex; 
@@ -232,14 +227,19 @@
         .btn-del:hover { transform: scale(1.1); }
 
         /* Banners */
-        #installBanner { display: none; background: var(--accent-color); color: white; text-align: center; font-weight: 900; padding: 15px; border-radius: var(--border-radius-lg); cursor: pointer; box-shadow: var(--accent-glow); }
-        #iosInstallHint { display: none; background: var(--card-bg); color: var(--text-muted); text-align: center; padding: 15px; border-radius: var(--border-radius-lg); font-size: 0.9rem; border: 2px solid var(--border-color); }
+        #installBanner { display: none; background: var(--accent-color); color: white; text-align: center; font-weight: 900; padding: 15px; border-radius: var(--border-radius-lg); cursor: pointer; box-shadow: var(--accent-glow); margin-bottom: 15px; transition: var(--transition);}
+        #installBanner:hover { transform: scale(1.02); }
+        #iosInstallHint { display: none; background: var(--card-bg); color: var(--text-muted); text-align: center; padding: 15px; border-radius: var(--border-radius-lg); font-size: 0.9rem; border: 2px solid var(--border-color); margin-bottom: 15px;}
     </style>
 </head>
 <body>
 
     <header>
-        <div class="app-title">✨ THERAPY SHOE</div>
+        <div class="app-title">
+            <img src="https://scontent.fhdy4-1.fna.fbcdn.net/v/t39.30808-6/718776675_122106754755312449_7479519247770313106_n.jpg?stp=dst-jpg_p526x296_tt6&_nc_cat=109&ccb=1-7&_nc_sid=833d8c&_nc_ohc=MqBHJf1WQLgQ7kNvwHGrYmq&_nc_oc=AdoUc9-tTmeVLLDtDdvA_nEUtYamkKa2cOLkhI0mSHXk_LoKImXldC5k16hFxQVLaNc&_nc_zt=23&_nc_ht=scontent.fhdy4-1.fna&_nc_gid=KYNXL1wg8wpIAIZeKI4G7g&_nc_ss=7b2a8&oh=00_Af9sFEvaT21wt6fui77Uox-d6LL2ayl_chvRNC5OMiu1Zg&oe=6A28839E" class="app-logo-img" alt="logo">
+            
+            <span>G-REHAB</span>
+        </div>
         <div class="header-controls">
             <div class="board-status">
                 <span class="status-dot offline" id="boardDot"></span>
@@ -303,8 +303,8 @@
 
         </div>
 
-        <div id="installBanner" onclick="installApp()">📥 ติดตั้งแอปลงเครื่อง กดที่นี่เลย!</div>
-        <div id="iosInstallHint">💡 <b>สำหรับ iPhone/iPad:</b> กดปุ่มแชร์ด้านล่าง แล้วเลือก "เพิ่มไปยังหน้าจอโฮม"</div>
+        <div id="installBanner" onclick="installApp()">📥 ติดตั้งแอปลงเครื่อง Android กดที่นี่เลย!</div>
+        <div id="iosInstallHint">💡 <b>สำหรับ iPhone/iPad:</b> กดปุ่มแชร์ด้านล่าง แล้วเลือก "เพิ่มไปยังหน้าจอโฮม (Add to Home Screen)"</div>
 
         <div class="menu-grid">
             <button class="menu-btn" onclick="openPage('calendarPage')">
@@ -374,6 +374,30 @@
 
     <script>
         // ============================================================
+        // PWA Setup (ทำให้สามารถติดตั้งลง Android ได้โดยไม่ต้องมีไฟล์แยก)
+        // ============================================================
+        const appName = "G-REHAB"; // ชื่อแอปที่จะโชว์บนหน้าจอโฮม
+        const appIconUrl = "https://scontent.fhdy4-1.fna.fbcdn.net/v/t39.30808-6/718776675_122106754755312449_7479519247770313106_n.jpg?stp=dst-jpg_p526x296_tt6&_nc_cat=109&ccb=1-7&_nc_sid=833d8c&_nc_ohc=MqBHJf1WQLgQ7kNvwHGrYmq&_nc_oc=AdoUc9-tTmeVLLDtDdvA_nEUtYamkKa2cOLkhI0mSHXk_LoKImXldC5k16hFxQVLaNc&_nc_zt=23&_nc_ht=scontent.fhdy4-1.fna&_nc_gid=KYNXL1wg8wpIAIZeKI4G7g&_nc_ss=7b2a8&oh=00_Af9sFEvaT21wt6fui77Uox-d6LL2ayl_chvRNC5OMiu1Zg&oe=6A28839E"; // โลโก้แอปบนหน้าจอโฮม
+        
+        const manifest = {
+            "name": appName,
+            "short_name": appName,
+            "start_url": ".",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#38bdf8",
+            "icons": [{ "src": appIconUrl, "sizes": "512x512", "type": "image/png" }]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
+        document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${URL.createObjectURL(manifestBlob)}">`);
+
+        if ('serviceWorker' in navigator) {
+            const swCode = `self.addEventListener('fetch', function(e) {});`; 
+            const swBlob = new Blob([swCode], {type: 'application/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>console.log('SW fallback'));
+        }
+
+        // ============================================================
         // 1. THEME SWITCHER LOGIC
         // ============================================================
         function toggleTheme() {
@@ -390,7 +414,7 @@
         }
 
         // ============================================================
-        // 2. THREE.JS 3D SHOE SIMULATION (Sandal - Pivot at Toe)
+        // 2. THREE.JS 3D SHOE SIMULATION 
         // ============================================================
         let scene, camera, renderer, boxContainer;
         let leftShoePivot, rightShoePivot;
@@ -503,13 +527,10 @@
         function setSimulationState(active) { isSimulating = active; if (active) simClock.start(); }
 
         // ============================================================
-        // 3. MAIN LOGIC (Firebase, Unified Dashboard Controls)
+        // 3. MAIN LOGIC (Firebase & Controls)
         // ============================================================
         let appState = { schedules: {}, selectedDate: '', relayActive: false, discordWebhook: localStorage.getItem('discordWebhook') || '' };
 
-        // ============================================================
-        // ⚠️ นำ FIREBASE API KEY มาใส่ที่นี่
-        // ============================================================
         const firebaseConfig = { 
             apiKey: "AIzaSyBLJ0R_fi9xE9FHrg8L8F3_zEI8_Er8aPE", 
             databaseURL: "https://nadia-rontaw-default-rtdb.firebaseio.com/" 
@@ -540,19 +561,17 @@
 
         document.getElementById('discordWebhookInput').value = appState.discordWebhook;
 
-        // --- Notifications ---
         function sendDiscordWebhook(message) {
             if (!appState.discordWebhook || !appState.discordWebhook.startsWith("http")) return;
             fetch(appState.discordWebhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: message }) });
         }
         function requestNotificationPermission() {
-            if ("Notification" in window) Notification.requestPermission().then(p => alert(p === "granted" ? "อนุญาตสำเร็จ" : "ปฏิเสธ"));
+            if ("Notification" in window) Notification.requestPermission().then(p => alert(p === "granted" ? "อนุญาตแจ้งเตือนสำเร็จ" : "ปฏิเสธการแจ้งเตือน"));
         }
         function sendLocalNotification(title, bodyText) {
-            if ("Notification" in window && Notification.permission === "granted") new Notification(title, { body: bodyText });
+            if ("Notification" in window && Notification.permission === "granted") new Notification(title, { body: bodyText, icon: appIconUrl });
         }
 
-        // --- RELAY & DASHBOARD BUTTON STATES ---
         function setFirebaseRelay(state) {
             if(db) db.ref("TherapyShoe/Control/Relay").set(state);
             else { appState.relayActive = state; updateButtonStatesUI(); } 
@@ -562,33 +581,26 @@
         let currentSeconds = 0;
         let initialSeconds = 0;
 
-        // จัดการสถานะ UI บน Dashboard 
         function updateButtonStatesUI() {
             const manualBtn = document.getElementById('manualActionBtn');
             const timerSetupCard = document.getElementById('timerSetupCard');
             const activeTimerDash = document.getElementById('activeTimerDashboard');
 
             if(appState.relayActive) {
-                // เปลี่ยนปุ่ม Manual เป็นโหมด "ปิด"
                 manualBtn.innerHTML = "⏹ ปิดการทำงาน";
                 manualBtn.classList.replace('btn-start', 'btn-stop');
-                
                 setSimulationState(true);
             } else {
-                // กลับสู่สภาพเริ่มต้น
                 manualBtn.innerHTML = "▶ เปิดการทำงาน";
                 manualBtn.classList.replace('btn-stop', 'btn-start');
-                
                 timerSetupCard.style.display = 'block';
                 activeTimerDash.style.display = 'none';
-                
                 setSimulationState(false);
             }
         }
 
-        // กดปุ่ม แมนนวล
         function toggleManualRelay() {
-            if (cdInterval) stopCountdown(false); // ถ้านับถอยหลังอยู่ ให้ยกเลิกก่อน
+            if (cdInterval) stopCountdown(false); 
             else {
                 const newState = !appState.relayActive;
                 setFirebaseRelay(newState);
@@ -596,7 +608,6 @@
             }
         }
 
-        // กดปุ่ม เริ่ม Timer
         function startCountdown() {
             if (appState.relayActive) return alert("อุปกรณ์ทำงานอยู่ กรุณากดปิดที่โหมดแมนนวลก่อนครับ");
             
@@ -612,7 +623,6 @@
             setFirebaseRelay(true);
             sendDiscordWebhook(`⏱️ เริ่มตั้งเวลากายภาพ ${h} ชม. ${m} นาที ${s} วินาที`);
 
-            // สลับ UI: ซ่อนกล่องตั้งเวลา, โชว์หลอดเรืองแสง
             document.getElementById('timerSetupCard').style.display = 'none';
             document.getElementById('activeTimerDashboard').style.display = 'block';
 
@@ -631,7 +641,6 @@
             let dispS = String(currentSeconds % 60).padStart(2, '0');
             document.getElementById('dashboardCountdownText').innerText = `${dispH}:${dispM}:${dispS}`;
             
-            // อัปเดตความกว้างหลอดพลังงาน
             const percent = (currentSeconds / initialSeconds) * 100;
             document.getElementById('dashboardProgressFill').style.width = percent + '%';
         }
@@ -650,7 +659,9 @@
             currentSeconds = 0;
         }
 
-        // --- CALENDAR LOGIC ---
+        // ============================================================
+        // CALENDAR LOGIC 
+        // ============================================================
         const mNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
         let calDate = new Date(); let currMonth = calDate.getMonth(); let currYear = calDate.getFullYear();
         appState.selectedDate = `${currYear}-${String(currMonth+1).padStart(2,'0')}-${String(calDate.getDate()).padStart(2,'0')}`;
@@ -711,7 +722,9 @@
             }
         }
 
-        // --- BACKGROUND ROUTINE ---
+        // ============================================================
+        // BACKGROUND ROUTINE (ตรวจสอบเวลาและแจ้งเตือนเท่านั้น)
+        // ============================================================
         let lastTriggeredTime = "";
         setInterval(() => {
             const now = new Date();
@@ -720,45 +733,48 @@
 
             const todayPlans = appState.schedules[dateStr] ? Object.values(appState.schedules[dateStr]) : [];
             todayPlans.forEach(plan => {
-                if(plan.time === timeStr && lastTriggeredTime !== timeStr && !appState.relayActive) {
-                    sendLocalNotification("ถึงเวลากายภาพ!", `เวลา ${timeStr} น. กรุณาสวมรองเท้า`);
-                    // บอร์ด ESP32 เป็นคนส่ง Webhook เพื่อป้องกันข้อความซ้ำซ้อน
+                if(plan.time === timeStr && lastTriggeredTime !== timeStr) {
+                    // ระบบจะแค่แจ้งเตือนเท่านั้น ไม่มีการสั่งเปิด relay อัตโนมัติ (แอปจะไม่ได้เรียก setFirebaseRelay(true) ที่นี่)
+                    sendLocalNotification("ถึงเวลากายภาพ!", `ถึงเวลา ${timeStr} น. กรุณาสวมรองเท้าเพื่อทำการบำบัด`);
                     lastTriggeredTime = timeStr;
                 }
             });
             if(lastTriggeredTime !== "" && lastTriggeredTime !== timeStr) lastTriggeredTime = "";
         }, 1000);
 
-        // --- NAVIGATION & INIT ---
         function openPage(pageId) { document.getElementById(pageId).classList.add('active'); }
         function closePage(pageId) { document.getElementById(pageId).classList.remove('active'); }
         
-        // --- ฟังก์ชันบันทึกลิงก์ Discord ลงบน Firebase ด้วย ---
         function saveSettings() {
             appState.discordWebhook = document.getElementById('discordWebhookInput').value;
             localStorage.setItem('discordWebhook', appState.discordWebhook);
             
-            // อัปเดตลิงก์ลง Firebase ให้บอร์ด ESP32 อ่านไปใช้
-            if(db) {
-                db.ref("TherapyShoe/Settings/discordWebhook").set(appState.discordWebhook);
-            }
+            if(db) db.ref("TherapyShoe/Settings/discordWebhook").set(appState.discordWebhook);
             
             alert("บันทึกข้อมูลและเชื่อมต่อ Webhook กับบอร์ดเรียบร้อยครับ"); 
             closePage('settingsPage');
         }
 
-        // PWA
+        // ============================================================
+        // ANDROID & IOS PWA INSTALL PROMPT
+        // ============================================================
         const isIos = () => /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
         let deferredPrompt;
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault(); deferredPrompt = e;
+            // ถ้าไม่ใช่ iOS และยังไม่ได้โหลดแบบ Standalone ให้แสดงปุ่มติดตั้งบนแอนดรอยด์
             if(!isIos() && !isInStandaloneMode()) document.getElementById('installBanner').style.display = 'block'; 
         });
+
         function installApp() {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
-                deferredPrompt.userChoice.then(() => { document.getElementById('installBanner').style.display = 'none'; deferredPrompt = null; });
+                deferredPrompt.userChoice.then((choiceResult) => { 
+                    if(choiceResult.outcome === 'accepted') document.getElementById('installBanner').style.display = 'none'; 
+                    deferredPrompt = null; 
+                });
             }
         }
         if (isIos() && !isInStandaloneMode()) document.getElementById('iosInstallHint').style.display = 'block';
