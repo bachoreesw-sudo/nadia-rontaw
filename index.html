@@ -75,7 +75,10 @@
         }
         
         .app-title { font-size: 1.2rem; font-weight: 900; color: var(--accent-color); text-shadow: var(--accent-glow); display: flex; align-items: center; gap: 8px;}
-        .app-logo-img { width: 30px; height: 30px; object-fit: contain; } /* คลาสสำหรับรูปโลโก้ */
+        
+        /* เพิ่ม border-radius: 50% และ object-fit: cover เพื่อให้เป็นวงกลม */
+        .app-logo-img { width: 30px; height: 30px; object-fit: cover; border-radius: 50%; } 
+        
         .header-controls { display: flex; align-items: center; gap: 15px; }
         
         .board-status { 
